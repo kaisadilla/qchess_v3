@@ -71,6 +71,34 @@ public class QuantumBoardState {
         return pieces;
     }
 
+    public bool IsCellEmpty (Vector2Int pos) {
+        foreach (var state in _classicStates) {
+            if (state.IsAnyPieceAt(pos)) return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Makes a classic move on the board. A classic move does not alter
+    /// the total amount of classic states that compose the quantum state.
+    /// Classic states in which the move would not be legal don't execute
+    /// the move.
+    /// A move is considered classic when it only has one destination target,
+    /// regardless of whether the piece involved is a classic or quantum piece,
+    /// or whether the piece will split into two due to quantum entanglement.
+    /// </summary>
+    /// <param name="move">The description of the move to make.</param>
+    public void MakeClassicMove (ClassicMove move) {
+        foreach (var state in _classicStates) {
+            state.MakeMoveIfAble(move.PieceId, move.Origin, move.Target);
+        }
+    }
+
+    //public void MakeQuantumMove (QuantumMove move) {
+    //
+    //}
+
     private void CalculateClassicStateCount () {
         _totalClassicStates = 0;
         foreach (var state in _classicStates) {

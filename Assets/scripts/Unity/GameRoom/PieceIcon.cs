@@ -49,10 +49,19 @@ public class PieceIcon : MonoBehaviour {
     [SerializeField] private TextMeshProUGUI debugId;
     #endregion
 
+    private bool _isGettingPressed = false;
+    private Coroutine? _crtLoadQuantumMove = null;
+
     /// <summary>
     /// The piece in the game logic this icon represents.
     /// </summary>
     public RealPiece? LogicPiece { get; private set; }
+
+    /// <summary>
+    /// True if this piece is ready to make a quantum move.
+    /// This occurs when the player decides to make one.
+    /// </summary>
+    public bool IsQuantumMove { get; private set; } = false;
 
     /// <summary>
     /// Initializes this piece icon with the real piece given.
@@ -79,8 +88,29 @@ public class PieceIcon : MonoBehaviour {
             DrawClassic(piece);
         }
 
-        gameObject.name = $"{piece.ClassicId} (${piece.ClassicPiece.PlayerName} " +
-            $"{piece.ClassicPiece.Type})";
+        gameObject.name = $"{piece.ClassicId} / {piece.ClassicPiece.PlayerName} " +
+            $"{piece.ClassicPiece.Type}";
+    }
+
+    /// <summary>
+    /// Starts the selection of this piece. This happens when the player presses
+    /// down the left button on their mouse, and only ends when the player
+    /// releases that button (at which point, EndSelection() will be called).
+    /// When the selection ends, a classical or quantum move will begin,
+    /// depending on how much time the player held their mouse button pressed.
+    /// </summary>
+    public void StartSelection () {
+        _isGettingPressed = true;
+        _crtLoadQuantumMove = StartCoroutine(LoadQuantumMoveAnimation());
+    }
+
+    public void EndSelection () {
+        _isGettingPressed = false;
+        this.StopCoroutine(ref _crtLoadQuantumMove);
+    }
+
+    public void SetSelected (bool selected) {
+        PaintAsSelected(selected);
     }
 
     /// <summary>
@@ -109,5 +139,56 @@ public class PieceIcon : MonoBehaviour {
         apperance.SetActive(false);
         pieceSprite.transform.localPosition = CLASSIC_SPRITE_POS;
         pieceSprite.transform.localScale = CLASSIC_SPRITE_SCALE;
+    }
+
+    /// <summary>
+    /// Displays this piece as selected or not selected, depending on the
+    /// argument given.
+    /// </summary>
+    /// <param name="selected">Whether this piece is selected or not.</param>
+    private void PaintAsSelected (bool selected) {
+        pieceGO.transform.localScale = selected ? SELECTED_SCALE : NORMAL_SCALE;
+
+        if (selected) {
+            quantumMoveLoaderMask.alphaCutoff = IsQuantumMove ? 0f : 1f;
+        }
+        else {
+            quantumMoveLoaderMask.alphaCutoff = 1f;
+        }
+    }
+
+    /// <summary>
+    /// The animation for the quantum move mask. After a small delay,
+    /// starts loading the quantum move. When the quantum move is loaded,
+    /// marks this piece as ready for a quantum move (when the user
+    /// releases the mouse button).
+    /// </summary>
+    private IEnumerator LoadQuantumMoveAnimation () {
+        IsQuantumMove = false;
+
+        // There's a small window of time before the piece starts loading the
+        // quantum move. This allows the player to select a classic move
+        // seemlessly without noticing the quantum bar starting to load.
+        yield return new WaitForSeconds(Constants.QUANTUM_LOAD_INITIAL_DELAY);
+
+        float timeLoading = 0f;
+        while (timeLoading < Constants.QUANTUM_LOAD_DURATION) {
+            timeLoading += Time.deltaTime;
+
+            float perc = timeLoading / Constants.QUANTUM_LOAD_DURATION;
+            quantumMoveLoaderMask.alphaCutoff = 1 - perc;
+
+            yield return 0; // wait until next frame.
+        }
+
+        // TODO: Remove
+        //for (float f = 1f; f >= 0; f -= 0.02f) {
+        //    quantumMoveLoaderMask.alphaCutoff = f;
+        //    yield return new WaitForSeconds(0.01f);
+        //}
+
+        quantumMoveLoaderMask.alphaCutoff = 0f;
+
+        IsQuantumMove = true;
     }
 }

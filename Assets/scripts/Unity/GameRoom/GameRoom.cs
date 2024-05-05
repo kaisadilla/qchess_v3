@@ -16,5 +16,11 @@ public class GameRoom : MonoBehaviour {
     private void Start () {
         Game = ChessGameFactory.Standard();
         _board.DrawBoard(_pieceStyle, Game.Meaning);
+
+        Game.OnMove += RedrawBoard;
+    }
+
+    private void RedrawBoard (object sender, MoveEventArgs evt) {
+        _board.DrawBoard(_pieceStyle, Game.Meaning);
     }
 }

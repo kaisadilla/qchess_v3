@@ -42,6 +42,9 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Board UI
+    uniqueID: 1945459037
+    locked: 0
   - name: Piece
     uniqueID: 1208014875
     locked: 0

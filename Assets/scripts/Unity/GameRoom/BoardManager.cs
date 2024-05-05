@@ -4,21 +4,26 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class BoardGrid : MonoBehaviour {
-    [SerializeField] private Transform _pieceGrid;
-
+public class BoardManager : MonoBehaviour {
+    [Header("Components")]
+    [SerializeField] private BoardUi _boardUi;
+    [SerializeField] private Transform _pieceContainer;
+    [SerializeField] private Transform _uiContainer;
+    [Header("Settings")]
     [SerializeField] private int _width = Constants.DEFAULT_BOARD_WIDTH;
     [SerializeField] private int _height = Constants.DEFAULT_BOARD_HEIGHT;
 
+    public BoardUi BoardUi => _boardUi;
+
     private void Start () {
-        PlaceContainerAtCorrectPosition();
+        PlaceContainersAtCorrectPosition();
     }
 
     public void Initialize (int width, int height) {
         _width = width;
         _height = height;
 
-        PlaceContainerAtCorrectPosition();
+        PlaceContainersAtCorrectPosition();
     }
 
     public void PlaceIntoGrid (
@@ -26,7 +31,7 @@ public class BoardGrid : MonoBehaviour {
     ) {
         var coords = GetGridCoordinates(cell, isFourPieceCell, cellIndex);
 
-        obj.SetParent(_pieceGrid);
+        obj.SetParent(_pieceContainer);
         obj.transform.localPosition = coords;
     }
 
@@ -34,8 +39,8 @@ public class BoardGrid : MonoBehaviour {
     /// Removes all pieces currently on the grid.
     /// </summary>
     public void Clear () {
-        foreach (GameObject child in _pieceGrid) {
-            Destroy(child);
+        foreach (Transform child in _pieceContainer) {
+            Destroy(child.gameObject);
         }
     }
 
@@ -50,7 +55,7 @@ public class BoardGrid : MonoBehaviour {
     /// case there are more than one piece in the cell.</param>
     /// <returns></returns>
     /// <exception cref="System.Exception"></exception>
-    public Vector2 GetGridCoordinates (
+    public static Vector2 GetGridCoordinates (
         Vector2Int cell, bool isFourPieceCell = false, int cellIndex = 0
     ) {
         if (isFourPieceCell == false) {
@@ -79,7 +84,9 @@ public class BoardGrid : MonoBehaviour {
     /// Places the grid that contains the pieces at the correct location
     /// based on the size of the board.
     /// </summary>
-    private void PlaceContainerAtCorrectPosition () {
-        _pieceGrid.transform.position = new(-_width / 2f, -_height / 2f);
+    private void PlaceContainersAtCorrectPosition () {
+        _pieceContainer.transform.position = new(-_width / 2f, -_height / 2f);
+        _uiContainer.transform.position = new(-_width / 2f, -_height / 2f);
+        _boardUi.UpdateSize(_width, _height);
     }
 }
