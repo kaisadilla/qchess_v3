@@ -13,7 +13,7 @@ public class ClassicBoardState {
     /// property set to '2' instead of '1' (meaning that it represents 2 
     /// identical boards).
     /// </summary>
-    public int Multiplier { get; set; } = 1;
+    public long Multiplier { get; set; } = 1; // TODO: this can get arbitrarily big.
 
     public int this[int x, int y] {
         get => Board[new(x, y)];

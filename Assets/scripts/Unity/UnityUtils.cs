@@ -13,9 +13,9 @@ public static class UnityUtils {
     /// this method.</param>
     /// <param name="coroutine">The coroutine to stop.</param>
     public static void StopCoroutine (this MonoBehaviour owner, ref Coroutine? coroutine) {
-        if (coroutine != null) {
-            owner.StopCoroutine(coroutine);
-            coroutine = null;
-        }
+        if (coroutine == null) return;
+
+        owner.StopCoroutine(coroutine);
+        coroutine = null;
     }
 }

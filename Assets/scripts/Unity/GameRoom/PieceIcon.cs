@@ -101,7 +101,10 @@ public class PieceIcon : MonoBehaviour {
     /// </summary>
     public void StartSelection () {
         _isGettingPressed = true;
-        _crtLoadQuantumMove = StartCoroutine(LoadQuantumMoveAnimation());
+
+        if (Ruleset.CanPieceQuantumMove(LogicPiece!.ClassicPiece.Type)) {
+            _crtLoadQuantumMove = StartCoroutine(LoadQuantumMoveAnimation());
+        }
     }
 
     public void EndSelection () {

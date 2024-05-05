@@ -39,6 +39,15 @@ public class ChessGame {
         CurrentState = new(this, initialState);
     }
 
+    /// <summary>
+    /// Returns true if the position given exists inside the board for this
+    /// game.
+    /// </summary>
+    /// <param name="pos">The position to check.</param>
+    public bool DoesPositionExist (Vector2Int pos) {
+        return pos.x >= 0 && pos.x < Width && pos.y >= 0 && pos.y < Height;
+    }
+
     public ClassicPiece GetPieceById (int id) {
         return _pieces[id];
     }
@@ -54,11 +63,10 @@ public class ChessGame {
     /// <param name="origin">The position the piece is currently in.</param>
     /// <param name="target">The position the piece will be moved to.</param>
     public bool TryClassicMove (
-        int pieceId, Vector2Int origin, Vector2Int target
+        RealPiece piece, Vector2Int target
     ) {
-        var piece = _pieces[pieceId];
         var availableMoves = Ruleset.GetAvailableMoves(
-            this, origin, piece.Type, false
+            this, piece, false
         );
 
         // this move is not legal.
@@ -70,7 +78,8 @@ public class ChessGame {
         bool isCastling = false;
 
         ClassicMove move = new(
-            piece.PlayerId, piece.Id, origin, target, isCastling
+            piece.ClassicPiece.PlayerId, piece.ClassicId, piece.Position,
+            target, isCastling
         );
         CurrentState.MakeClassicMove(move);
         OnMove(this, new(move));
@@ -79,11 +88,10 @@ public class ChessGame {
     }
 
     public bool TryQuantumMove (
-        int pieceId, Vector2Int origin, List<Vector2Int> targets
+        RealPiece piece, List<Vector2Int> targets
     ) {
-        var piece = _pieces[pieceId];
         var availableMoves = Ruleset.GetAvailableMoves(
-            this, origin, piece.Type, false
+            this, piece, true
         );
 
         // this move is not legal.
@@ -92,7 +100,9 @@ public class ChessGame {
             return false;
         }
 
-        QuantumMove move = new(piece.PlayerId, pieceId, origin, targets);
+        QuantumMove move = new(
+            piece.ClassicPiece.PlayerId, piece.ClassicId, piece.Position, targets
+        );
         CurrentState.MakeQuantumMove(move);
         OnMove(this, new(move));
 

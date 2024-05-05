@@ -42,8 +42,7 @@ public class Board : MonoBehaviour {
 
         var validMoves = Ruleset.GetAvailableMoves(
             _room.Game,
-            logicPiece.Position,
-            logicPiece.ClassicPiece.Type,
+            logicPiece,
             false
         );
 
@@ -91,7 +90,7 @@ public class Board : MonoBehaviour {
         if (_selectedPiece == null) return; // TODO: Throw
 
         var piece = _selectedPiece.LogicPiece;
-        _room.Game.TryClassicMove(piece.ClassicId, piece.Position, target);
+        _room.Game.TryClassicMove(piece, target);
         CancelMove();
     }
 
@@ -99,7 +98,7 @@ public class Board : MonoBehaviour {
         if (_selectedPiece == null) return; // TODO: Throw
 
         var piece = _selectedPiece.LogicPiece;
-        _room.Game.TryQuantumMove(piece.ClassicId, piece.Position, targets);
+        _room.Game.TryQuantumMove(piece, targets);
         CancelMove();
     }
 

@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using UnityEngine;
 
 
@@ -16,7 +17,9 @@ public class QuantumBoardState {
     /// identical classic state, this number cannot be obtained by simply
     /// counting the amount of items in the classic states' list.
     /// </summary>
-    private long _totalClassicStates;
+    private BigInteger _totalClassicStates;
+
+    public IReadOnlyList<ClassicBoardState> ClassicStates => _classicStates;
 
     public QuantumBoardState (ChessGame game, ClassicBoardState initialState) {
         _game = game;
@@ -44,7 +47,7 @@ public class QuantumBoardState {
         // Keys in this dictionary represent different piece ids found in the
         // cell we are looking at, while values represent the amount of times
         // that specific id was found there.
-        Dictionary<int, int> appearances = new();
+        Dictionary<int, long> appearances = new();
 
         foreach (var state in _classicStates) {
             if (state.IsAnyPieceAt(pos) == false) continue;
