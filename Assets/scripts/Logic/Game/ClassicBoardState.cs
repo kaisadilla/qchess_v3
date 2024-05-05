@@ -35,6 +35,8 @@ public class ClassicBoardState {
             clone.Board[kv.Key] = kv.Value;
         }
 
+        clone.Multiplier = Multiplier;
+
         return clone;
     }
 
@@ -71,5 +73,28 @@ public class ClassicBoardState {
 
         Board.Remove(origin);
         Board[target] = pieceId;
+    }
+
+    /// <summary>
+    /// Returns true if the board given is identical 
+    /// </summary>
+    /// <param name="other"></param>
+    /// <returns></returns>
+    public bool IsBoardIdentical (ClassicBoardState other) {
+        // for each piece in the other board.
+        foreach (var otherKv in other.Board) {
+            // if one board has a piece in a cell that is empty in the other
+            // board, then they are not identical.
+            if (IsAnyPieceAt(otherKv.Key) == false) {
+                return false;
+            }
+            // if the piece at this position is different in the two boards,
+            // then they're not identical.
+            if (Board[otherKv.Key] != otherKv.Value) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using static UnityEngine.GraphicsBuffer;
 
 public class ChessGame {
     private readonly Dictionary<int, ClassicPiece> _pieces;
@@ -68,10 +69,31 @@ public class ChessGame {
 
         bool isCastling = false;
 
-        var move = new ClassicMove(
+        ClassicMove move = new(
             piece.PlayerId, piece.Id, origin, target, isCastling
         );
         CurrentState.MakeClassicMove(move);
+        OnMove(this, new(move));
+
+        return true;
+    }
+
+    public bool TryQuantumMove (
+        int pieceId, Vector2Int origin, List<Vector2Int> targets
+    ) {
+        var piece = _pieces[pieceId];
+        var availableMoves = Ruleset.GetAvailableMoves(
+            this, origin, piece.Type, false
+        );
+
+        // this move is not legal.
+        if (availableMoves.Any(pos => targets.Contains(pos)) == false) {
+            Debug.LogWarning("Illegal move attempted.");
+            return false;
+        }
+
+        QuantumMove move = new(piece.PlayerId, pieceId, origin, targets);
+        CurrentState.MakeQuantumMove(move);
         OnMove(this, new(move));
 
         return true;

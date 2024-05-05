@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using UnityEngine;
 
@@ -15,7 +16,7 @@ public class QuantumBoardState {
     /// identical classic state, this number cannot be obtained by simply
     /// counting the amount of items in the classic states' list.
     /// </summary>
-    private int _totalClassicStates;
+    private long _totalClassicStates;
 
     public QuantumBoardState (ChessGame game, ClassicBoardState initialState) {
         _game = game;
@@ -64,7 +65,7 @@ public class QuantumBoardState {
         foreach (var kv in appearances) {
             var pieceId = kv.Key;
 
-            double presence = kv.Value / _totalClassicStates;
+            double presence = kv.Value / (double)_totalClassicStates;
             pieces.Add(new(_game, pieceId, pos, presence));
         }
 
@@ -95,9 +96,55 @@ public class QuantumBoardState {
         }
     }
 
-    //public void MakeQuantumMove (QuantumMove move) {
-    //
-    //}
+    public void MakeQuantumMove (QuantumMove move) {
+        List<ClassicBoardState> newStates = new();
+
+        Stopwatch s = Stopwatch.StartNew();
+
+        foreach (var state in _classicStates) {
+            var clone = state.Clone();
+
+            state.MakeMoveIfAble(move.PieceId, move.Origin, move.Targets[0]);
+            clone.MakeMoveIfAble(move.PieceId, move.Origin, move.Targets[1]);
+
+            newStates.Add(clone);
+        }
+
+        var allNewStates = _classicStates.Concat(newStates);
+
+        double timeToCloneNewBoards = s.ElapsedMilliseconds;
+        s.Restart();
+
+        List<ClassicBoardState> updatedStates = new();
+        foreach (var stateToAdd in allNewStates) {
+            bool identicalBoardFound = false;
+
+            foreach (var consolidatedState in updatedStates) {
+                if (consolidatedState.IsBoardIdentical(stateToAdd)) {
+                    consolidatedState.Multiplier += stateToAdd.Multiplier; // technically it'll always be multiplying by 2.
+                    identicalBoardFound = true;
+                    break;
+                }
+            }
+            
+            if (identicalBoardFound == false) {
+                updatedStates.Add(stateToAdd);
+            }
+        }
+
+        double timeToCreateBoardCollection = s.ElapsedMilliseconds;
+
+        _classicStates.Clear();
+        _classicStates.AddRange(updatedStates);
+        CalculateClassicStateCount();
+
+        s.Stop();
+        UnityEngine.Debug.Log(
+            $"[{_classicStates.Count} boards (representing {_totalClassicStates} " + 
+            $"states)] - Move: {timeToCloneNewBoards} ms, " + 
+            $"Generate board list: {timeToCreateBoardCollection} ms."
+        );
+    }
 
     private void CalculateClassicStateCount () {
         _totalClassicStates = 0;

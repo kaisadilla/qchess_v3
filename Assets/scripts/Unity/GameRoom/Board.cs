@@ -2,7 +2,6 @@
 
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 public class Board : MonoBehaviour {
     [Header("Prefabs")]
@@ -18,7 +17,7 @@ public class Board : MonoBehaviour {
     /// <summary>
     /// The targets selected for the next move.
     /// </summary>
-    private readonly List<Position> _selectedTargets = new();
+    private readonly List<Vector2Int> _selectedTargets = new();
 
     public UiState UiState { get; private set; } = UiState.AwaitingPlayerAction;
 
@@ -68,7 +67,20 @@ public class Board : MonoBehaviour {
 
     public void SelectMoveTarget (Vector2Int target) {
         if (_selectedPiece.IsQuantumMove) {
+            // if it's a cell that's already selected, we undo that selection.
+            if (_selectedTargets.Contains(target)) {
+                _selectedTargets.Remove(target);
+                _boardManager.BoardUi.SetSelected(target, false);
+            }
+            // else, we add that cell to the list of selections.
+            else {
+                _selectedTargets.Add(target);
+                _boardManager.BoardUi.SetSelected(target, true);
+            }
 
+            if (_selectedTargets.Count >= 2) {
+                MakeQuantumMove(_selectedTargets);
+            }
         }
         else {
             MakeClassicMove(target);
@@ -80,6 +92,14 @@ public class Board : MonoBehaviour {
 
         var piece = _selectedPiece.LogicPiece;
         _room.Game.TryClassicMove(piece.ClassicId, piece.Position, target);
+        CancelMove();
+    }
+
+    public void MakeQuantumMove (List<Vector2Int> targets) {
+        if (_selectedPiece == null) return; // TODO: Throw
+
+        var piece = _selectedPiece.LogicPiece;
+        _room.Game.TryQuantumMove(piece.ClassicId, piece.Position, targets);
         CancelMove();
     }
 
