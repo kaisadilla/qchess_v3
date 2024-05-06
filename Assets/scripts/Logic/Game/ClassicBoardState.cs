@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class ClassicBoardState {
+    private readonly ChessGame _game;
+
     // key represents position, value represents piece id.
     public Dictionary<Vector2Int, int> Board { get; private set; } = new();
     /// <summary>
@@ -25,11 +27,15 @@ public class ClassicBoardState {
         set => Board[pos] = value;
     }
 
+    public ClassicBoardState (ChessGame game) {
+        this._game = game;
+    }
+
     /// <summary>
     /// Creates a new classic board state that is an identical copy of this one.
     /// </summary>
     public ClassicBoardState Clone () {
-        ClassicBoardState clone = new();
+        ClassicBoardState clone = new(_game);
 
         foreach (var kv in Board) {
             clone.Board[kv.Key] = kv.Value;
@@ -66,10 +72,14 @@ public class ClassicBoardState {
             return;
         }
 
-        bool isLegalMove = true; // TODO: Actually check this.
+        //bool isLegalMove = true; // TODO: Actually check this.
+        var legalMoves = Ruleset.GetAvailableMovesInBoard(
+            _game, this, _game.GetPieceById(pieceId), origin
+        );
 
-        // if the move is illegal, then no move is made in this board.
-        if (isLegalMove == false) return;
+        // if the move is illegal in this board,
+        // then no move is made in this board.
+        if (legalMoves.Contains(target) == false) return;
 
         Board.Remove(origin);
         Board[target] = pieceId;

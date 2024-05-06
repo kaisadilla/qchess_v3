@@ -97,6 +97,11 @@ public class QuantumBoardState {
         foreach (var state in _classicStates) {
             state.MakeMoveIfAble(move.PieceId, move.Origin, move.Target);
         }
+
+        UnityEngine.Debug.Log(
+            $"[{_classicStates.Count} boards (representing {_totalClassicStates} " +
+            $"states)]."
+        );
     }
 
     public void MakeQuantumMove (QuantumMove move) {

@@ -31,7 +31,7 @@ public class ChessGame {
         Height = Constants.DEFAULT_BOARD_HEIGHT;
         _pieces = pieces;
 
-        ClassicBoardState initialState = new();
+        ClassicBoardState initialState = new(this);
         foreach (var kv in startingCells) {
             initialState[kv.Key] = kv.Value;
         }
@@ -94,7 +94,8 @@ public class ChessGame {
             this, piece, true
         );
 
-        // this move is not legal.
+        // this move is not legal. Should not happen because we are only offering
+        // the player legal moves to choose.
         if (availableMoves.Any(pos => targets.Contains(pos)) == false) {
             Debug.LogWarning("Illegal move attempted.");
             return false;
