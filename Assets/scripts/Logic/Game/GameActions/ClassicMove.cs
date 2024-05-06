@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class ClassicMove : IMove {
@@ -14,6 +15,11 @@ public class ClassicMove : IMove {
     /// into there.
     /// </summary>
     public List<RealPiece> PiecesAtTarget { get; private set; }
+
+    /// <summary>
+    /// If true, the origin cell will be measured.
+    /// </summary>
+    public bool MeasuresOrigin { get; private set; }
     /// <summary>
     /// If true, the target cell will be measured (the pieces themselves are
     /// not measured, so any piece discarded from this cell doesn't necessarily
@@ -40,6 +46,11 @@ public class ClassicMove : IMove {
 
         PiecesAtTarget = piecesAtTarget;
 
+        // if a quantum piece moves to a cell that contains a classic piece,
+        // the attacking (quantum) piece will be measured.
+        MeasuresOrigin = piece.IsQuantum && piecesAtTarget.Any(
+            p => p.IsQuantum == false
+        );
         // if a classic piece moves to a cell that contains a quantum piece
         // (or more), it'll always measure the cell.
         MeasuresTarget = piece.IsQuantum == false && piecesAtTarget.Count > 0;

@@ -121,36 +121,14 @@ public class QuantumBoardState {
     /// </summary>
     /// <param name="move">The description of the move to make.</param>
     public void MakeClassicMove (ClassicMove move) {
+        if (move.MeasuresOrigin) {
+            MeasureCell(move.Origin);
+        }
+
         // this move causes its target cell to be measured. The cell must be
         // measured before the moved piece moves into it.
         if (move.MeasuresTarget) {
-            Stopwatch s = Stopwatch.StartNew();
-
-            // we get a random board, taking their weight into account.
-            int boardIndex = GetRandomBoardIndex();
-            var board = _classicStates[boardIndex];
-            // the piece that is at that cell in the chosen board, or null
-            // if there isn't any piece there in this board.
-            int? pieceIdAtCell = board.GetPieceAt(move.Target);
-
-            // the boards that will remain active after this measure.
-            List<ClassicBoardState> survivingStates = new();
-            foreach (var state in _classicStates) {
-                // only boards that have the same piece (or lack of piece)
-                // in the target cell as our reference board will survive.
-                if (state.GetPieceAt(move.Target) == pieceIdAtCell) {
-                    survivingStates.Add(state);
-                }
-            }
-
-            _classicStates.Clear();
-            _classicStates.AddRange(survivingStates);
-
-            s.Stop();
-            UnityEngine.Debug.Log(
-                $"Measurement taken for cell {move.Target} in " + 
-                $"{s.ElapsedMilliseconds} ms."
-            );
+            MeasureCell(move.Target);
         }
 
         foreach (var state in _classicStates) {
@@ -262,6 +240,36 @@ public class QuantumBoardState {
         foreach (var state in _classicStates) {
             _totalClassicStates += state.Weight;
         }
+    }
+
+    private void MeasureCell (Vector2Int cell) {
+        Stopwatch s = Stopwatch.StartNew();
+
+        // we get a random board, taking their weight into account.
+        int boardIndex = GetRandomBoardIndex();
+        var board = _classicStates[boardIndex];
+        // the piece that is at that cell in the chosen board, or null
+        // if there isn't any piece there in this board.
+        int? pieceIdAtCell = board.GetPieceAt(cell);
+
+        // the boards that will remain active after this measure.
+        List<ClassicBoardState> survivingStates = new();
+        foreach (var state in _classicStates) {
+            // only boards that have the same piece (or lack of piece)
+            // in the target cell as our reference board will survive.
+            if (state.GetPieceAt(cell) == pieceIdAtCell) {
+                survivingStates.Add(state);
+            }
+        }
+
+        _classicStates.Clear();
+        _classicStates.AddRange(survivingStates);
+
+        s.Stop();
+        UnityEngine.Debug.Log(
+            $"Measurement taken for cell {cell} in " +
+            $"{s.ElapsedMilliseconds} ms."
+        );
     }
 
     private int GetRandomBoardIndex () {
