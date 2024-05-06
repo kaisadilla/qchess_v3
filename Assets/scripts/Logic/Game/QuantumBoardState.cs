@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using UnityEngine;
-using static UnityEditor.PlayerSettings;
 
 
 public class QuantumBoardState {
@@ -121,12 +120,12 @@ public class QuantumBoardState {
     /// </summary>
     /// <param name="move">The description of the move to make.</param>
     public void MakeClassicMove (ClassicMove move) {
+        // this move causes cells to be measured. The cells must be
+        // measured before the moved piece moves into it.
+
         if (move.MeasuresOrigin) {
             MeasureCell(move.Origin);
         }
-
-        // this move causes its target cell to be measured. The cell must be
-        // measured before the moved piece moves into it.
         if (move.MeasuresTarget) {
             MeasureCell(move.Target);
         }
