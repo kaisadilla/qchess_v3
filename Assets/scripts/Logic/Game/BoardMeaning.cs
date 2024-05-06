@@ -12,13 +12,25 @@ using UnityEngine;
 /// </summary>
 public class BoardMeaning {
     private readonly List<RealPiece>[] _board;
+    private readonly List<RealPiece> _capturedPieces;
 
     private readonly int _boardWidth, _boardHeight;
 
+    /// <summary>
+    /// A list with all the pieces that have been captured in this board.
+    /// </summary>
+    public IReadOnlyList<RealPiece> CapturedPieces => _capturedPieces;
+
+    /// <summary>
+    /// Returns a list of pieces at the cell given.
+    /// </summary>
     public List<RealPiece> this[int x, int y] {
         get => _board[IndexFromPos(x, y)];
     }
 
+    /// <summary>
+    /// Returns a list of pieces at the cell given.
+    /// </summary>
     public List<RealPiece> this[Vector2Int pos] {
         get => this[pos.x, pos.y];
     }
@@ -27,6 +39,7 @@ public class BoardMeaning {
         _boardWidth = boardWidth;
         _boardHeight = boardHeight;
         _board = new List<RealPiece>[boardWidth * boardHeight];
+        _capturedPieces = new();
     }
 
     /// <summary>
@@ -45,6 +58,10 @@ public class BoardMeaning {
                 meaning._board[index] = state.GetPiecesAtPos(pos);
             }
         }
+
+        meaning._capturedPieces.AddRange(
+            state.GetCapturedPieces()
+        );
 
         return meaning;
     }

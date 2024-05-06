@@ -16,7 +16,7 @@ public class ChessGame {
     public QuantumBoardState CurrentState { get; private set; }
     public BoardMeaning Meaning => BoardMeaning.FromBoardState(
         CurrentState, Width, Height
-    );
+    ); // TODO Optimize this so it's not calculated every time it's accessed, since we know exactly when it changes.
 
     #region Events
     public delegate void MoveEvent (object sender, MoveEventArgs evt);
@@ -78,8 +78,8 @@ public class ChessGame {
         bool isCastling = false;
 
         ClassicMove move = new(
-            piece.ClassicPiece.PlayerId, piece.ClassicId, piece.Position,
-            target, isCastling
+            piece.ClassicPiece.PlayerId, piece.ClassicId, piece,
+            piece.Position, target, isCastling, Meaning[target]
         );
         CurrentState.MakeClassicMove(move);
         OnMove(this, new(move));

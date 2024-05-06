@@ -23,27 +23,64 @@ public static class Ruleset {
         RealPiece piece,
         bool isQuantumMove
     ) {
+        var meaning = game.Meaning;
+
+        HashSet<Vector2Int> availableCells;
+
         if (piece.ClassicPiece.Type == PieceType.Pawn) {
-            return new(GetAvailablePawnMoves(game, piece, isQuantumMove));
+            availableCells = GetAvailablePawnMoves(game, piece, isQuantumMove);
         }
-        if (piece.ClassicPiece.Type == PieceType.Rook) {
-            return new(GetAvailableRookMoves(game, piece, isQuantumMove));
+        else if (piece.ClassicPiece.Type == PieceType.Rook) {
+            availableCells = GetAvailableRookMoves(game, piece, isQuantumMove);
         }
-        if (piece.ClassicPiece.Type == PieceType.Bishop) {
-            return new(GetAvailableBishopMoves(game, piece, isQuantumMove));
+        else if(piece.ClassicPiece.Type == PieceType.Bishop) {
+            availableCells = GetAvailableBishopMoves(game, piece, isQuantumMove);
         }
-        if (piece.ClassicPiece.Type == PieceType.Knight) {
-            return new(GetAvailableKnightMoves(game, piece, isQuantumMove));
+        else if(piece.ClassicPiece.Type == PieceType.Knight) {
+            availableCells = GetAvailableKnightMoves(game, piece, isQuantumMove);
         }
-        if (piece.ClassicPiece.Type == PieceType.Queen) {
-            var rookMoves = GetAvailableRookMoves(game, piece, isQuantumMove);
+        else if(piece.ClassicPiece.Type == PieceType.Queen) {
+            availableCells = GetAvailableRookMoves (game, piece, isQuantumMove);
             var bishopMoves = GetAvailableBishopMoves(game, piece, isQuantumMove);
 
-            rookMoves.UnionWith(bishopMoves);
-            return new(rookMoves);
+            availableCells.UnionWith(bishopMoves);
+        }
+        else if(piece.ClassicPiece.Type == PieceType.King) {
+            availableCells = GetAvailableKingMoves(game, piece, isQuantumMove);
+        }
+        else {
+            availableCells = new();
         }
 
-        return new();
+        HashSet<Vector2Int> cellsToRemove = new();
+        // we'll validate that every cell marked as available is actually
+        // available. This is because some moves are not allowed in the real
+        // board, even if there's some classic states where that move would
+        // be possible.
+        foreach (var cell in availableCells) {
+            // all the real pieces in the cell where are checking.
+            List<RealPiece> piecesInCell = meaning[cell];
+
+            // if any of the pieces in that cell belongs to the same player as
+            // the piece we are going to move, then that cell may not be
+            // available.
+            foreach (var p in piecesInCell) {
+                // a piece can move to where another part of itself is.
+                if (p.ClassicId == piece.ClassicId) {
+                    continue;
+                }
+                // but it cannot move to where a DIFFERENT piece belonging
+                // to the same player is.
+                if (p.ClassicPiece.PlayerId == piece.ClassicPiece.PlayerId) {
+                    cellsToRemove.Add(cell);
+                    break;
+                }
+            }
+        }
+
+        availableCells.ExceptWith(cellsToRemove);
+
+        return new(availableCells);
     }
 
     /// <summary>
@@ -85,6 +122,11 @@ public static class Ruleset {
             rookMoves.UnionWith(bishopMoves);
             return new(rookMoves);
         }
+        if (piece.Type == PieceType.King) {
+            return new(GetAvailableKingMovesInBoard(
+                game, board, piece.PlayerId, origin, false
+            ));
+        }
 
         return new();
     }
@@ -97,6 +139,10 @@ public static class Ruleset {
         HashSet<Vector2Int> availableMoves = new();
 
         foreach (var state in game.CurrentState.ClassicStates) {
+            if (IsPieceAt(state, piece.Position, piece.ClassicId) == false) {
+                continue;
+            }
+
             var moves = GetAvailablePawnMovesInBoard(
                 game, state, piece.ClassicPiece.PlayerId, piece.Position, isQuantumMove
             );
@@ -114,6 +160,10 @@ public static class Ruleset {
         HashSet<Vector2Int> availableMoves = new();
 
         foreach (var state in game.CurrentState.ClassicStates) {
+            if (IsPieceAt(state, piece.Position, piece.ClassicId) == false) {
+                continue;
+            }
+
             var moves = GetAvailableRookMovesInBoard(
                 game, state, piece.ClassicPiece.PlayerId, piece.Position, isQuantumMove
             );
@@ -131,6 +181,10 @@ public static class Ruleset {
         HashSet<Vector2Int> availableMoves = new();
 
         foreach (var state in game.CurrentState.ClassicStates) {
+            if (IsPieceAt(state, piece.Position, piece.ClassicId) == false) {
+                continue;
+            }
+
             var moves = GetAvailableBishopMovesInBoard(
                 game, state, piece.ClassicPiece.PlayerId, piece.Position, isQuantumMove
             );
@@ -148,6 +202,10 @@ public static class Ruleset {
         HashSet<Vector2Int> availableMoves = new();
 
         foreach (var state in game.CurrentState.ClassicStates) {
+            if (IsPieceAt(state, piece.Position, piece.ClassicId) == false) {
+                continue;
+            }
+
             var moves = GetAvailableKnightMovesInBoard(
                 game, state, piece.ClassicPiece.PlayerId, piece.Position, isQuantumMove
             );
@@ -155,6 +213,36 @@ public static class Ruleset {
         }
 
         return availableMoves;
+    }
+
+    private static HashSet<Vector2Int> GetAvailableKingMoves (
+        ChessGame game,
+        RealPiece piece,
+        bool isQuantumMove
+    ) {
+        HashSet<Vector2Int> availableMoves = new();
+
+        foreach (var state in game.CurrentState.ClassicStates) {
+            if (IsPieceAt(state, piece.Position, piece.ClassicId) == false) {
+                continue;
+            }
+
+            var moves = GetAvailableKingMovesInBoard(
+                game, state, piece.ClassicPiece.PlayerId, piece.Position, isQuantumMove
+            );
+            availableMoves.UnionWith(moves);
+        }
+
+        return availableMoves;
+    }
+
+    private static bool IsPieceAt (ClassicBoardState state, Vector2Int pos, int pieceId) {
+        // there's no piece at the given cell.
+        if (state.IsAnyPieceAt(pos) == false) return false;
+        // the piece in the given cell is a different one.
+        if (state[pos] != pieceId) return false;
+
+        return true;
     }
 
     private static HashSet<Vector2Int> GetAvailablePawnMovesInBoard (
@@ -414,6 +502,44 @@ public static class Ruleset {
                 }
             }
         }
+
+        return availableMoves;
+    }
+    
+    private static HashSet<Vector2Int> GetAvailableKingMovesInBoard (
+        ChessGame game,
+        ClassicBoardState board,
+        int playerId,
+        Vector2Int pos,
+        bool isQuantumMove
+    ) {
+        HashSet<Vector2Int> availableMoves = new();
+
+        Vector2Int[] potentialMoves = {
+            pos + new Vector2Int(-1, -1), // botton-left
+            pos + new Vector2Int(0, -1), // bottom
+            pos + new Vector2Int(1, -1), // bottom-right
+            pos + new Vector2Int(1, 0), // right
+            pos + new Vector2Int(1, 1), // top-right
+            pos + new Vector2Int(0, 1), // top
+            pos + new Vector2Int(-1, 1), // top-left
+            pos + new Vector2Int(-1, 0), // left
+        };
+
+        foreach (var move in potentialMoves) {
+            if (game.DoesPositionExist(move)) {
+                if (board.IsAnyPieceAt(move)) {
+                    if (IsPieceAtPosAnEnemy(game, board, move, playerId)) {
+                        availableMoves.Add(move);
+                    }
+                }
+                else {
+                    availableMoves.Add(move);
+                }
+            }
+        }
+
+        // TODO: Castling
 
         return availableMoves;
     }

@@ -22,7 +22,7 @@ public class Board : MonoBehaviour {
     public UiState UiState { get; private set; } = UiState.AwaitingPlayerAction;
 
     public void DrawBoard (PieceStyle style, BoardMeaning board) {
-        _boardManager.Clear();
+        _boardManager.ClearGrid();
 
         for (int y = 0; y < _room.Game.Height; y++) {
             for (int x = 0; x < _room.Game.Width; x++) {
@@ -30,6 +30,8 @@ public class Board : MonoBehaviour {
                 DrawPieces(style, pieces, new(x, y));
             }
         }
+
+        DrawCapturedPieces(style, board.CapturedPieces);
     }
 
     public void StartMove (PieceIcon piece) {
@@ -115,6 +117,19 @@ public class Board : MonoBehaviour {
             icon.Initialize(piece, style);
 
             _boardManager.PlaceIntoGrid(icon.transform, cell, pieces.Count != 1, i);
+        }
+    }
+
+    private void DrawCapturedPieces (
+        PieceStyle style, IEnumerable<RealPiece> pieces
+    ) {
+        _boardManager.ClearCapturedPieces();
+
+        foreach (var piece in pieces) {
+            var icon = Instantiate(piecePrefab);
+            icon.Initialize(piece, style);
+
+            _boardManager.PlaceIntoCapturedZone(icon.transform);
         }
     }
 }

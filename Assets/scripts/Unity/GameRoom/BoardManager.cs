@@ -9,6 +9,7 @@ public class BoardManager : MonoBehaviour {
     [SerializeField] private BoardUi _boardUi;
     [SerializeField] private Transform _pieceContainer;
     [SerializeField] private Transform _uiContainer;
+    [SerializeField] private Transform _capturedPiecesContainer;
     [Header("Settings")]
     [SerializeField] private int _width = Constants.DEFAULT_BOARD_WIDTH;
     [SerializeField] private int _height = Constants.DEFAULT_BOARD_HEIGHT;
@@ -35,11 +36,21 @@ public class BoardManager : MonoBehaviour {
         obj.transform.localPosition = coords;
     }
 
+    public void PlaceIntoCapturedZone (Transform obj) {
+        obj.SetParent(_capturedPiecesContainer);
+    }
+
     /// <summary>
     /// Removes all pieces currently on the grid.
     /// </summary>
-    public void Clear () {
+    public void ClearGrid () {
         foreach (Transform child in _pieceContainer) {
+            Destroy(child.gameObject);
+        }
+    }
+
+    public void ClearCapturedPieces () {
+        foreach (Transform child in _capturedPiecesContainer) {
             Destroy(child.gameObject);
         }
     }

@@ -71,7 +71,7 @@ public class BoardInput : MonoBehaviour {
 
         if (pieceHit.collider == null) return;
 
-        heldPiece = pieceHit.collider.gameObject.GetComponent<PieceIcon>();
+        heldPiece = pieceHit.collider.gameObject.GetComponentInParent<PieceIcon>();
         heldPiece.StartSelection();
     }
 

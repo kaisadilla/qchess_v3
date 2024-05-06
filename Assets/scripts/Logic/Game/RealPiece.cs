@@ -10,7 +10,8 @@ public class RealPiece {
     /// </summary>
     public int ClassicId { get; private set; }
     /// <summary>
-    /// The position of this piece in the board.
+    /// The position of this piece in the board. If the piece is captured,
+    /// then it's x coordinate will be -1.
     /// </summary>
     public Vector2Int Position { get; private set; }
     /// <summary>
@@ -30,6 +31,10 @@ public class RealPiece {
     /// </summary>
     public bool IsQuantum => Presence < 1.0;
     /// <summary>
+    /// True if the piece has been captured.
+    /// </summary>
+    public bool IsCaptured => Position.x == -1;
+    /// <summary>
     /// The classic piece this piece represents.
     /// </summary>
     public ClassicPiece ClassicPiece { get; private set; }
@@ -41,5 +46,15 @@ public class RealPiece {
         Position = position;
         Presence = presence;
         ClassicPiece = game.GetPieceById(pieceId);
+    }
+
+    /// <summary>
+    /// Constructs a real piece that is captured (i.e. has no position on the
+    /// board). The position of this piece will be stored at (-1, -1).
+    /// </summary>
+    public static RealPiece CreateCapturedPiece (
+        ChessGame game, int pieceId, double presence
+    ) {
+        return new(game, pieceId, new(-1, -1), presence);
     }
 }

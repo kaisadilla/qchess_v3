@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using UnityEngine;
+using static UnityEditor.PlayerSettings;
 
 
 public class QuantumBoardState {
@@ -24,7 +25,7 @@ public class QuantumBoardState {
     public QuantumBoardState (ChessGame game, ClassicBoardState initialState) {
         _game = game;
         _classicStates = new() { initialState };
-        _totalClassicStates = initialState.Multiplier;
+        _totalClassicStates = initialState.Weight;
     }
 
     public QuantumBoardState (ChessGame game, List<ClassicBoardState> classicStates) {
@@ -56,10 +57,10 @@ public class QuantumBoardState {
             int id = state[pos];
 
             if (appearances.ContainsKey(id)) {
-                appearances[id] += state.Multiplier;
+                appearances[id] += state.Weight;
             }
             else {
-                appearances[id] = state.Multiplier;
+                appearances[id] = state.Weight;
             }
         }
 
@@ -70,6 +71,32 @@ public class QuantumBoardState {
 
             double presence = kv.Value / (double)_totalClassicStates;
             pieces.Add(new(_game, pieceId, pos, presence));
+        }
+
+        return pieces;
+    }
+
+    public List<RealPiece> GetCapturedPieces () {
+        Dictionary<int, long> appearances = new();
+
+        foreach (var state in _classicStates) {
+            foreach (var capturedPieceId in state.CapturedPieces) {
+                if (appearances.ContainsKey(capturedPieceId)) {
+                    appearances[capturedPieceId] += state.Weight;
+                }
+                else {
+                    appearances[capturedPieceId] = state.Weight;
+                }
+            }
+        }
+
+        List<RealPiece> pieces = new();
+
+        foreach (var kv in appearances) {
+            var pieceId = kv.Key;
+
+            double presence = kv.Value / (double)_totalClassicStates;
+            pieces.Add(RealPiece.CreateCapturedPiece(_game, pieceId, presence));
         }
 
         return pieces;
@@ -94,14 +121,43 @@ public class QuantumBoardState {
     /// </summary>
     /// <param name="move">The description of the move to make.</param>
     public void MakeClassicMove (ClassicMove move) {
+        // this move causes its target cell to be measured. The cell must be
+        // measured before the moved piece moves into it.
+        if (move.MeasuresTarget) {
+            Stopwatch s = Stopwatch.StartNew();
+
+            // we get a random board, taking their weight into account.
+            int boardIndex = GetRandomBoardIndex();
+            var board = _classicStates[boardIndex];
+            // the piece that is at that cell in the chosen board, or null
+            // if there isn't any piece there in this board.
+            int? pieceIdAtCell = board.GetPieceAt(move.Target);
+
+            // the boards that will remain active after this measure.
+            List<ClassicBoardState> survivingStates = new();
+            foreach (var state in _classicStates) {
+                // only boards that have the same piece (or lack of piece)
+                // in the target cell as our reference board will survive.
+                if (state.GetPieceAt(move.Target) == pieceIdAtCell) {
+                    survivingStates.Add(state);
+                }
+            }
+
+            _classicStates.Clear();
+            _classicStates.AddRange(survivingStates);
+
+            s.Stop();
+            UnityEngine.Debug.Log(
+                $"Measurement taken for cell {move.Target} in " + 
+                $"{s.ElapsedMilliseconds} ms."
+            );
+        }
+
         foreach (var state in _classicStates) {
             state.MakeMoveIfAble(move.PieceId, move.Origin, move.Target);
         }
 
-        UnityEngine.Debug.Log(
-            $"[{_classicStates.Count} boards (representing {_totalClassicStates} " +
-            $"states)]."
-        );
+        OptimizeClassicStateList(_classicStates);
     }
 
     public void MakeQuantumMove (QuantumMove move) {
@@ -118,25 +174,71 @@ public class QuantumBoardState {
             newStates.Add(clone);
         }
 
-        var allNewStates = _classicStates.Concat(newStates);
+        s.Stop();
+        UnityEngine.Debug.Log(
+            $"Creating new boards: {s.ElapsedMilliseconds} ms."
+        );
 
-        double timeToCloneNewBoards = s.ElapsedMilliseconds;
-        s.Restart();
+        var allNewStates = _classicStates.Concat(newStates);
+        OptimizeClassicStateList(allNewStates);
+    }
+
+    /// <summary>
+    /// Optimizes the classic state list to make it as small as possible, 
+    /// merging redundant classic states in the list together, reducing the
+    /// 'Weight' value of the states when they can be divided, etc.
+    /// 
+    /// This method takes an argument with the list of states to optimimze, but
+    /// the result will be stored automatically in the '_classicStates' field.
+    /// 
+    /// This method will automatically update '_totalClassicStates'.
+    /// </summary>
+    /// <param name="states">The list of classic board states to optimize.</param>
+    private void OptimizeClassicStateList (IEnumerable<ClassicBoardState> states) {
+        Stopwatch s = Stopwatch.StartNew();
 
         List<ClassicBoardState> updatedStates = new();
-        foreach (var stateToAdd in allNewStates) {
+        List<long> weights = new();
+        bool weightOneFound = false; // true when a state with a Weight of '1' is found.
+
+        foreach (var stateToAdd in states) {
             bool identicalBoardFound = false;
 
             foreach (var consolidatedState in updatedStates) {
                 if (consolidatedState.IsBoardIdentical(stateToAdd)) {
-                    consolidatedState.Multiplier += stateToAdd.Multiplier; // technically it'll always be multiplying by 2.
+                    consolidatedState.Weight += stateToAdd.Weight; // weights can be different, so can't multiply by 2.
                     identicalBoardFound = true;
                     break;
                 }
             }
-            
+
             if (identicalBoardFound == false) {
                 updatedStates.Add(stateToAdd);
+            }
+        }
+
+        foreach (var state in updatedStates) {
+            weights.Add(state.Weight);
+
+            // weights cannot be simplified, so we should count no further.
+            if (state.Weight == 1) {
+                weightOneFound = true;
+                break;
+            }
+        }
+
+        // if weights can potentially be simplified
+        if (weightOneFound == false) {
+            // find the greatest common denominator
+            long gcd = Utils.GCD(weights.ToArray());
+
+            // if its higher than 1, divide all states by the gcd.
+            if (gcd > 1) {
+                foreach (var state in updatedStates) {
+                    state.Weight /= gcd;
+                }
+
+                UnityEngine.Debug.Log($"Board weights divided by {gcd}.");
             }
         }
 
@@ -144,21 +246,45 @@ public class QuantumBoardState {
 
         _classicStates.Clear();
         _classicStates.AddRange(updatedStates);
+
         CalculateClassicStateCount();
 
         s.Stop();
         UnityEngine.Debug.Log(
-            $"[{_classicStates.Count} boards (representing {_totalClassicStates} " + 
-            $"states)] - Move: {timeToCloneNewBoards} ms, " + 
-            $"Generate board list: {timeToCreateBoardCollection} ms."
+            $"{_classicStates.Count} boards ({_totalClassicStates} states) " +
+            $"- optimized in {timeToCreateBoardCollection} ms"
         );
     }
 
     private void CalculateClassicStateCount () {
         _totalClassicStates = 0;
+
         foreach (var state in _classicStates) {
-            _totalClassicStates += state.Multiplier;
+            _totalClassicStates += state.Weight;
+        }
+    }
+
+    private int GetRandomBoardIndex () {
+        //long rng = Utils.RandomLong(0, (long)_totalClassicStates);
+        int rng = Random.Range(0, (int)_totalClassicStates); // TODO: we need a long rng.
+
+        long acc = 0;
+        int selectedIndex = -1;
+
+        for (int i = 0; i < _classicStates.Count; i++) {
+            var state = _classicStates[i];
+            acc += state.Weight;
+
+            if (acc > rng) {
+                selectedIndex = i;
+                break;
+            }
         }
 
+        if (selectedIndex == -1) {
+            throw new System.Exception("No index could be selected!");
+        }
+
+        return selectedIndex;
     }
 }
