@@ -14,9 +14,17 @@ public class ChessGame {
     public int Height { get; private set; }
 
     public QuantumBoardState CurrentState { get; private set; }
+
+    /// <summary>
+    /// A list of moves effectuated in this game, in order.
+    /// </summary>
+    public List<IMove> Moves { get; private set; } = new();
+
     public BoardMeaning Meaning => BoardMeaning.FromBoardState(
         CurrentState, Width, Height
     ); // TODO Optimize this so it's not calculated every time it's accessed, since we know exactly when it changes.
+
+    public IMove LastMove => Moves[^1];
 
     #region Events
     public delegate void MoveEvent (object sender, MoveEventArgs evt);
@@ -84,6 +92,7 @@ public class ChessGame {
         CurrentState.MakeClassicMove(move);
         OnMove(this, new(move));
 
+        Moves.Add(move);
         return true;
     }
 
@@ -102,11 +111,13 @@ public class ChessGame {
         }
 
         QuantumMove move = new(
-            piece.ClassicPiece.PlayerId, piece.ClassicId, piece.Position, targets
+            piece.ClassicPiece.PlayerId, piece.ClassicId, piece,
+            piece.Position, targets
         );
         CurrentState.MakeQuantumMove(move);
         OnMove(this, new(move));
 
+        Moves.Add(move);
         return true;
     }
 }

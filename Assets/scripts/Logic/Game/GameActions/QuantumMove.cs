@@ -11,11 +11,12 @@ public class QuantumMove : IMove {
     public List<Vector2Int> Targets { get; private set; }
 
     public QuantumMove (
-        int playerId, int pieceId, Vector2Int origin, List<Vector2Int> targets
+        int playerId, int pieceId, RealPiece piece,
+        Vector2Int origin, List<Vector2Int> targets
     ) {
         PlayerId = playerId;
         PieceId = pieceId;
-        // Piece
+        Piece = piece;
         Origin = origin;
         Targets = targets;
     }

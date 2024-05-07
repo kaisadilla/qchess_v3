@@ -124,7 +124,7 @@ public static class Ruleset {
         }
         if (piece.Type == PieceType.King) {
             return new(GetAvailableKingMovesInBoard(
-                game, board, piece.PlayerId, origin, false
+                game, board, piece.PlayerId, piece.Id, origin, false
             ));
         }
 
@@ -228,7 +228,8 @@ public static class Ruleset {
             }
 
             var moves = GetAvailableKingMovesInBoard(
-                game, state, piece.ClassicPiece.PlayerId, piece.Position, isQuantumMove
+                game, state, piece.ClassicPiece.PlayerId, piece.ClassicId,
+                piece.Position, isQuantumMove
             );
             availableMoves.UnionWith(moves);
         }
@@ -264,7 +265,7 @@ public static class Ruleset {
         }
 
         // double move, only available when the pawn is in its starting row.
-        if (pos.y == (playerId == 0 ? 1 : 6)) {
+        if (pos.y == GetPlayerNthFile(game, playerId, 1)) {
             var potentialSuperMove = pos + new Vector2Int(0, forwardVal + forwardVal);
 
             // for the jump forward to be possible, the cell between the origin
@@ -296,7 +297,39 @@ public static class Ruleset {
             }
         }
 
-        // TODO: En passant.
+        // en passant, only available when the pawn is three squares away from
+        // its starting position, and the pawn next two it executed its first
+        // move (a double advance forward) in the preceding turn.
+        if (pos.y == GetPlayerNthFile(game, playerId, 4)) {
+            var enemyPawnRow = playerId == 0 ? 6 : 1;
+
+            var cellsToCheck = new Vector2Int[] {
+                pos + new Vector2Int(-1, 0), // left
+                pos + new Vector2Int(1, 0), // right
+            };
+
+            foreach (var cell in cellsToCheck) {
+                // if there's no piece at that cell, en passant is not possible.
+                if (board.TryGetPieceAt(cell, out int potentialPawnId) == false) {
+                    continue;
+                }
+
+                var potentialPawn = game.GetPieceById(potentialPawnId);
+
+                // if that piece is owned by the same player, skip.
+                if (potentialPawn.PlayerId == playerId) continue;
+                // if that piece is not a pawn, skip.
+                if (potentialPawn.Type != PieceType.Pawn) continue;
+
+                var lastMove = game.LastMove;
+                // if that pawn didn't move last turn, skip.
+                if (lastMove.PieceId != potentialPawnId) continue;
+                // or if it moved from a position different from its starting point, skip.
+                if (lastMove.Origin.y != enemyPawnRow) continue;
+
+                availableMoves.Add(cell +  new Vector2Int(0, forwardVal));
+            }
+        }
 
         return availableMoves;
     }
@@ -510,6 +543,7 @@ public static class Ruleset {
         ChessGame game,
         ClassicBoardState board,
         int playerId,
+        int pieceId,
         Vector2Int pos,
         bool isQuantumMove
     ) {
@@ -539,7 +573,55 @@ public static class Ruleset {
             }
         }
 
-        // TODO: Castling
+        // Castling: can be done when the king and the target rook haven't
+        // been moved yet this game, and when there's no piece in between them.
+        // if the king hasn't been moved yet.
+        int startingKingRow = GetPlayerNthFile(game, playerId, 0);
+
+        // the king is its in starting file and hasn't moved.
+        if (pos.y == startingKingRow && board.MovedPieces.Contains(pieceId) == false) {
+            bool isCastlingPossible = true;
+
+            // castling towards the left (x = 0).
+            // if there's a piece at the leftmost column which hasn't moved. TODO: Maybe we allow non-rooks to, for non-conventional armies.
+            if (board.TryGetPieceAt(new(0, pos.y), out int potentialRookId)
+                && game.GetPieceById(potentialRookId).Type == PieceType.Rook
+                && board.MovedPieces.Contains(potentialRookId) == false
+            ) {
+                // every space between the rook and the king must be empty.
+                for (int i = 1; i < pos.x; i++) {
+                    if (board.IsAnyPieceAt(new(i, pos.y))) {
+                        isCastlingPossible = false;
+                        break;
+                    }
+                }
+
+                if (isCastlingPossible) {
+                    availableMoves.Add(new(2, pos.y));
+                }
+            }
+
+            // castling towards the right (x = max).
+            // if there's a piece at the rightmost column which hasn't moved.
+            int rightmost = GetRightNthRank(game, 0);
+            isCastlingPossible = true; // reset it to true.
+            if (board.TryGetPieceAt(new(rightmost, pos.y), out potentialRookId)
+                && game.GetPieceById(potentialRookId).Type == PieceType.Rook
+                && board.MovedPieces.Contains(potentialRookId) == false
+            ) {
+                // every space between the rook and the king must be empty.
+                for (int i = rightmost - 1; i > pos.x; i--) {
+                    if (board.IsAnyPieceAt(new(i, pos.y))) {
+                        isCastlingPossible = false;
+                        break;
+                    }
+                }
+
+                if (isCastlingPossible) {
+                    availableMoves.Add(new(rightmost - 1, pos.y));
+                }
+            }
+        }
 
         return availableMoves;
     }
@@ -558,5 +640,20 @@ public static class Ruleset {
     ) {
         int pieceId = board[position];
         return game.GetPieceById(pieceId).PlayerId != playerId;
+    }
+
+    /// <summary>
+    /// Returns the y coordinate of the player's nth file (starting at 0th).
+    /// </summary>
+    /// <param name="game">The game in which the board is.</param>
+    /// <param name="playerId">The id of the player.</param>
+    /// <param name="n">The # of the file (starting at 0), from the player's
+    /// perspective.</param>
+    private static int GetPlayerNthFile (ChessGame game, int playerId, int n) {
+        return playerId == 0 ? n : game.Height - n - 1;
+    }
+
+    private static int GetRightNthRank (ChessGame game, int n) {
+        return game.Width - n - 1;
     }
 }

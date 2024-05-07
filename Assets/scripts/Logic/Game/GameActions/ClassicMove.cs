@@ -53,6 +53,8 @@ public class ClassicMove : IMove {
         );
         // if a classic piece moves to a cell that contains a quantum piece
         // (or more), it'll always measure the cell.
-        MeasuresTarget = piece.IsQuantum == false && piecesAtTarget.Count > 0;
+        MeasuresTarget = piece.IsQuantum == false
+            && piecesAtTarget.Count > 0;
+            //&& piecesAtTarget.Any(p => p.ClassicId != pieceId); // don't measure if you are unifying, although that's irrelevant.
     }
 }

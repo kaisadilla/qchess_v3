@@ -120,21 +120,30 @@ public class QuantumBoardState {
     /// </summary>
     /// <param name="move">The description of the move to make.</param>
     public void MakeClassicMove (ClassicMove move) {
+        List<ClassicBoardState> newStates = new();
+
         // this move causes cells to be measured. The cells must be
         // measured before the moved piece moves into it.
-
         if (move.MeasuresOrigin) {
+            UnityEngine.Debug.Log($"Move measures origin {move.Origin}.");
             MeasureCell(move.Origin);
         }
         if (move.MeasuresTarget) {
+            UnityEngine.Debug.Log($"Move measures origin {move.Target}.");
             MeasureCell(move.Target);
         }
 
         foreach (var state in _classicStates) {
-            state.MakeMoveIfAble(move.PieceId, move.Origin, move.Target);
+            // we clone the board so the previous board is preserved for
+            // undo purposes.
+            var clone = state.Clone();
+            clone.MakeMoveIfAble(
+                move.PieceId, move.Piece.ClassicPiece.Type, move.Origin, move.Target
+            );
+            newStates.Add(clone);
         }
 
-        OptimizeClassicStateList(_classicStates);
+        OptimizeClassicStateList(newStates);
     }
 
     public void MakeQuantumMove (QuantumMove move) {
@@ -143,21 +152,27 @@ public class QuantumBoardState {
         Stopwatch s = Stopwatch.StartNew();
 
         foreach (var state in _classicStates) {
-            var clone = state.Clone();
+            // we clone both boards so the previous board is preserved for
+            // undo purposes.
+            var clone1 = state.Clone();
+            var clone2 = state.Clone();
 
-            state.MakeMoveIfAble(move.PieceId, move.Origin, move.Targets[0]);
-            clone.MakeMoveIfAble(move.PieceId, move.Origin, move.Targets[1]);
+            clone1.MakeMoveIfAble(
+                move.PieceId, move.Piece.ClassicPiece.Type, move.Origin, move.Targets[0]
+            );
+            clone2.MakeMoveIfAble(
+                move.PieceId, move.Piece.ClassicPiece.Type, move.Origin, move.Targets[1]
+            );
 
-            newStates.Add(clone);
+            newStates.Add(clone1);
+            newStates.Add(clone2);
         }
 
         s.Stop();
         UnityEngine.Debug.Log(
             $"Creating new boards: {s.ElapsedMilliseconds} ms."
         );
-
-        var allNewStates = _classicStates.Concat(newStates);
-        OptimizeClassicStateList(allNewStates);
+        OptimizeClassicStateList(newStates);
     }
 
     /// <summary>
